@@ -1,7 +1,7 @@
 {
-    "pastel": [
+    "prison": [
         {
-            "floor_color": "#C7D6D5",
+            "corridor_color": "#C7D6D5",
             "wall_color": "#6D7275",
             "position_color": "#E11439",
             "end_color": "#61D095",
