@@ -1,14 +1,16 @@
 import numpy as np
 import pygame
 import json
-from copy import copy, deepcopy
+import sys
+from copy import deepcopy
+from time import sleep
 
 # layout coding
-CORRIDOR_CODE = 0
-WALL_CODE = -1
-POSITION_CODE = -5
-END_CODE = -10
-VISITED_CODE = 1
+CORRIDOR = 0
+WALL = -1
+POSITION = -5
+END = -10
+VISITED = 1
 
 # actions coding
 UP = 0
@@ -39,19 +41,19 @@ class Maze():
         for row_idx in range(rows):
             for column_idx in range(columns):
                 char = maze[row_idx][column_idx]
-                if char == '.':
-                    maze_board[row_idx][column_idx] = CORRIDOR_CODE
+                if char == '.' or char == ' ':
+                    maze_board[row_idx][column_idx] = CORRIDOR
                     self.states[(row_idx, column_idx)] = states_count
                     states_count += 1
                 elif char =='#':
-                    maze_board[row_idx][column_idx] = WALL_CODE
+                    maze_board[row_idx][column_idx] = WALL
                 elif char == 'S':
-                    maze_board[row_idx][column_idx] = POSITION_CODE
+                    maze_board[row_idx][column_idx] = POSITION
                     self.start_pos = np.array([row_idx, column_idx])
                     self.states[(row_idx, column_idx)] = states_count
                     states_count += 1
                 elif char == 'F':
-                    maze_board[row_idx][column_idx] = END_CODE
+                    maze_board[row_idx][column_idx] = END
                     self.end_pos = np.array([row_idx, column_idx])
                     self.states[(row_idx, column_idx)] = states_count
                     states_count += 1
@@ -65,16 +67,12 @@ class Maze():
         Q_table = np.zeros((q_rows, q_cols))
 
         for state, code in self.states.items():
-            actions = self.get_actions_code(state)
+            actions = self.get_actions(state)
             for action in range(4):
                 if action not in actions:
                     Q_table[code][action] = -float('inf')
 
         return Q_table
-
-
-    def get_states(self):
-        return self.states
 
 
     def step(self, action):
@@ -88,7 +86,6 @@ class Maze():
             row += 1
         elif action == RIGHT:
             col += 1
-        # print(self.agent_position, row, col)
         new_position = np.array([row, col])
         self.set_agent_position(new_position)
 
@@ -104,44 +101,38 @@ class Maze():
     def reset(self):
         self.layout = deepcopy(self.original_layout)
         self.set_agent_position(self.start_pos)
-        self.layout[self.end_pos[0]][self.end_pos[1]] = END_CODE
+        self.layout[self.end_pos[0]][self.end_pos[1]] = END
         return self.states[tuple(self.start_pos.tolist())]
 
 
-    def get_actions(self):
-        max_row, max_col = self.layout.shape
-        row, col = self.agent_position
-        available_positions = []
-        for offset in [-1, 1]:
-            if row + offset >= 0 and row + offset < max_row and self.layout[row + offset][col] != WALL_CODE:
-                available_positions.append([row + offset, col])
-            if col + offset >= 0 and col + offset <max_col and self.layout[row, col + offset] != WALL_CODE:
-                available_positions.append([row, col + offset])
-
-        return np.array(available_positions)
-
-    def get_actions_code(self, state):
+    def get_actions(self, state):
         max_row, max_col = self.layout.shape
         actions = []
         row, col = state
-        if row - 1 >= 0 and self.layout[row-1][col] != WALL_CODE:
+        if row - 1 >= 0 and self.layout[row-1][col] != WALL:
             actions.append(UP)
-        if col - 1 >= 0 and self.layout[row][col-1] != WALL_CODE:
+        if col - 1 >= 0 and self.layout[row][col-1] != WALL:
             actions.append(LEFT)
-        if row + 1 < max_row and self.layout[row+1][col] != WALL_CODE:
+        if row + 1 < max_row and self.layout[row+1][col] != WALL:
             actions.append(DOWN)
-        if col + 1 < max_col and self.layout[row][col+1] != WALL_CODE:
+        if col + 1 < max_col and self.layout[row][col+1] != WALL:
             actions.append(RIGHT)
         return actions
 
 
+    def get_agent_position(self):
+        return self.agent_position
+
+
+
+
     def set_agent_position(self, new_position):
         row, col = self.agent_position
-        self.layout[row][col] = VISITED_CODE
+        self.layout[row][col] = VISITED
 
         self.agent_position = new_position
         new_row, new_col = new_position
-        self.layout[new_row][new_col] = POSITION_CODE
+        self.layout[new_row][new_col] = POSITION
 
 
     def load_color_theme(self, filepath, theme_name):
@@ -174,16 +165,31 @@ class Maze():
                         (col * self.square + self.square, row * self.square + self.square),
                         (col * self.square, row * self.square + self.square),
                     ]
-                    if square == WALL_CODE:
+                    if square == WALL:
                         square_color = self.theme['wall_color']
-                    elif square == POSITION_CODE:
+                    elif square == POSITION:
                         square_color = self.theme['position_color']
-                    elif square == END_CODE:
+                    elif square == END:
                         square_color = self.theme['end_color']
-                    elif square == VISITED_CODE:
+                    elif square == VISITED:
                         square_color = self.theme['visited_color']
                     pygame.draw.polygon(self.window, square_color, points)
         if caption:
             pygame.display.set_caption(caption)
 
         pygame.display.update()
+
+
+    def visualize_path(self, path, square_size=20, theme_file='resources/themes.json', theme_name='prison'):
+        self.reset()
+        self.load_color_theme(theme_file, theme_name)
+        self.prepare_window(square_size, 'Maze Path Visualization')
+        for position in path:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    sys.exit()
+            self.set_agent_position(position)
+            self.render()
+            sleep(0.1)
+        sleep(3)
+        sys.exit()

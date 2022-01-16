@@ -1,40 +1,44 @@
-import imp
 import numpy as np
-from itertools import count
-from maze import Maze
 
 
-def policy(state, actions):
-    pass
+def Q_learning(env, episodes, discount=1.0, learing_rate=0.6, epsilon=0.2):
 
-
-def discounted_expected_return(t, rewards, discount):
-    ret = 0
-    for k in range(len(rewards)):
-        ret += discount ** k * rewards[t+k+1]
-
-def q_learning(env, episodes, discount=1.0, learing_rate=0.6, epsilon=0.2):
-
-    n_states = env.get_max_possible_states()
-    n_actions = env.get_max_possible_actions()
-
-    Q_table = np.zeros((n_states, n_actions))
-
+    Q_table = env.init_Q_table()
+    episode_rewards = []
+    episode_lenghts = []
+    path = []
 
     for episode in range(episodes):
 
-        # reset environment
-        rewards = []
-
-        reached_terminal_state = False
+        current_state = env.reset()
         t = 0
-        while not reached_terminal_state:
-
-
+        episode_reward  = 0
+        terminal = False
+        while not terminal:
             t += 1
+            if episode == episodes -1:
+                path.append(env.get_agent_position())
+
+            action = np.argmax(Q_table[current_state, :])
+            next_state, reward, terminal = env.step(action)
+            Q_table[current_state, action] = (
+                (1 - learing_rate) * Q_table[current_state, action] + learing_rate * (reward + discount * max(Q_table[next_state,:]))
+            )
+
+            episode_reward += reward
+            current_state = next_state
+
+        if episode == episodes -1:
+            path.append(env.get_agent_position())
+
+        episode_rewards.append(episode_reward)
+        episode_lenghts.append(t)
+
+    return path, episode_rewards, episode_lenghts
 
 
-
+def Q_learning_visual():
+    pass
 
 
 if __name__ == "__main__":
